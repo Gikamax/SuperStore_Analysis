@@ -11,6 +11,18 @@ services:
       POSTGRES_USER: username
       POSTGRES_PASSWORD: password
       POSTGRES_DB: Superstore
-  # Extract Container
+    networks:
+      - superstore_network
+  # # Extract Container
+  # superstore_extract:
+  #   build: ./Extract
+  #   container_name: 'superstore_extract'
+  #   networks:
+  #     - superstore_network
+  #   depends_on:
+  #     - database    
 
   # Dash Container
+
+networks:
+  superstore_network:
