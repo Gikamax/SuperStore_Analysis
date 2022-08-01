@@ -1,0 +1,16 @@
+# Docker-compose for Superstore
+version: '3.8'
+services:
+  # Postgres Database
+  database:
+    image: "postgres" # Latest
+    container_name: "postgres"
+    ports:
+     - 5432:5432
+    environment:
+      POSTGRES_USER: username
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: Superstore
+  # Extract Container
+
+  # Dash Container
