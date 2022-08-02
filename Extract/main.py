@@ -35,7 +35,7 @@ df_order_information = (df_orders[["Order ID", "Order Date", "Order Priority"]]
 df_order_information["Status"].fillna("Delivered", inplace=True) # if Status NaN then no return
 df_order_information.drop_duplicates(inplace=True) # Get Unique values. 
 df_order_information.drop_duplicates(subset=["Order ID"], keep="last", inplace=True) # Some Orders have partially been returned, keep last instance. 
-df_orders.drop(["Order ID", "Order Date", "Order Priority"], axis=1, inplace=True) # Drop Columns that are in this table. 
+df_orders.drop(["Order Date", "Order Priority"], axis=1, inplace=True) # Drop Columns that are in this table. 
 
 # Customer
 df_customer = df_orders[["Customer ID", "Customer Name", "Customer Segment", "Country", "Region", "State or Province", "City", "Postal Code"]]
@@ -60,7 +60,9 @@ df_orders = df_orders.merge(df_shipping, on = ["Ship Mode", "Shipping Cost", "Sh
 df_orders.drop(["Ship Mode", "Shipping Cost", "Ship Date"], axis =1 , inplace=True)
 
 # Sales
-df_sales = df_orders.drop("Row ID", axis=1)
+df_sales = df_orders.drop("Row ID", axis =1)
+df_sales["Sales ID"] = range(1, len(df_sales) +1)
+
 
 ## Read in Data
 # Prepare Database (Create Schema's if needed)
@@ -74,6 +76,5 @@ etl.load_hub(df_product, "Product", "Product ID", db_connection_string) # Produc
 etl.load_hub(df_shipping, "Shipment", "Shipping ID", db_connection_string) # Shipping
 
 # Read in the Fact(s)
-df_x = df_sales.head()
-
-
+fkey_dict = {"Manager": "Manager ID", "Order": "Order ID", "Customer": "Customer ID", "Product": "Product ID", "Shipment": "Shipping ID"}
+etl.load_lnk(df_sales,"Sales", "Sales ID", fkey_dict, db_connection_string)

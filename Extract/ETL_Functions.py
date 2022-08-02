@@ -8,8 +8,8 @@ from dotenv import load_dotenv
 import os
 
 # Variables for connecting to Source and Database
-# load_dotenv()
-# db_connection_string = os.getenv("POSTGRES_DB") 
+load_dotenv()
+db_connection_string = os.getenv("POSTGRES_DB") 
 
 # Functions
 def prepare_database(connection_string:str, schema_list:list) -> str:
@@ -55,7 +55,7 @@ def prepare_dataframe(dataframe:pd.DataFrame,table_name:str, unique_column:str) 
     dataframe["record_source"] = "Test"
     return dataframe
 
-def check_if_table_exists(table_name:str, connection_string:str) -> Boolean:
+def check_if_table_exists(table_name:str, type:str, connection_string:str) -> Boolean:
     """
     Checks if the Table already has a Hub or SAT. 
     """
@@ -74,13 +74,24 @@ def check_if_table_exists(table_name:str, connection_string:str) -> Boolean:
 
              ## Create Query
             query = db.select([tables.columns.table_name])
-             # Where
-            query = query.where(
-                 db.and_(
-                     tables.columns.table_name.like("HUB_%"),
-                     tables.columns.table_schema == "dwh",
-                 )
-             )
+            if type.lower() == "hub":
+                # Where
+                query = query.where(
+                    db.and_(
+                        tables.columns.table_name.like("HUB_%"),
+                        tables.columns.table_schema == "dwh",
+                    )
+                )
+            elif type.lower() == "lnk":
+                # Where
+                query = query.where(
+                    db.and_(
+                        tables.columns.table_name.like("LNK_%"),
+                        tables.columns.table_schema == "dwh",
+                    )
+                )
+            else:
+                pass
              # Run Query
             table_list = connection.execute(query).fetchall()
          # Check if tablename is used
@@ -269,7 +280,7 @@ def load_hub(dataframe:pd.DataFrame, table_name:str, unique_column:str, connecti
     sat = create_sat(prepared_dataframe, table_name=table_name)
 
     # Check if table exists
-    table_exists = check_if_table_exists(table_name=table_name, connection_string=connection_string)
+    table_exists = check_if_table_exists(table_name=table_name, type="SAT", connection_string=connection_string)
 
     if table_exists: # if the table exists then we want to insert. 
         insert_hub(hub, table_name)
@@ -277,3 +288,193 @@ def load_hub(dataframe:pd.DataFrame, table_name:str, unique_column:str, connecti
     else: # if table not exists we want to create and alter. 
         create_hub_database(hub, table_name)
         create_sat_database(sat, table_name)
+
+def load_lnk(dataframe:pd.DataFrame, table_name:str, unique_column:str, foreign_keys:dict, connection_string:str):
+    """
+    Function to Load the LNK and LSAT combination. 
+    Checks if the LNK and LSAT exist, and acts accordingly. 
+    dataframe           -> the table to be inserted. 
+    table_name          -> Name of table (will look like LNK_table_name)
+    unique_column       -> Unique Identifier of the table. 
+    foreign_keys        -> Dict with Hub_name and foreign_key {Customer: Customer ID}
+    connection_string   -> The string to create SQL Alchemy connection.  
+    """
+    # Create engine
+    engine = db.create_engine(connection_string)
+    # Internal Functions
+    def create_lnk(dataframe:pd.DataFrame, table_name:str, unique_column:str, foreign_keys:dict) -> pd.DataFrame:
+        """
+        
+        """
+        # Create BusinessKeys from the SAT's based on foreign_keys
+        for _table in foreign_keys:
+            dataframe[f"{_table}_BK"] = dataframe[foreign_keys[_table]].apply( lambda x: hashlib.md5(str(x).encode()).hexdigest())
+        # Define the columns for the LNK
+        LNK_columns = (
+            [f"{table_name}_BK", unique_column, "load_dts", "record_source"]
+            + [_ for _ in foreign_keys.values()]
+            + [f"{_}_BK" for _ in foreign_keys.keys()]
+        )
+        return dataframe[LNK_columns] # return dataframe with only those columns 
+
+    def insert_lnk(lnk:pd.DataFrame, table_name:str):
+            """
+            INNER FUNCTION: Inserts the unseen rows in the LNK. 
+            """
+            # Create engine
+            with engine.connect() as connection:
+                # Find existing hub
+                lnk_database = pd.read_sql_table(f"LNK_{table_name}", con=connection, schema="dwh")
+                # Merge Hubs to find missing values
+                result = lnk.merge(lnk_database[f"{table_name}_BK"], how="left", on=f"{table_name}_BK", indicator=True)
+                # Insert database where _merge =="left_only"
+                result[result["_merge"] == "left_only"].drop("_merge", axis=1).to_sql(f"LNK_{table_name}", con=connection, schema = "dwh", if_exists="append", index=False)
+                #return f'Inserted {len(result[result["_merge"] == "left_only"])} rows' # To logging
+                return 1
+            
+    def insert_lsat(lsat:pd.DataFrame, table_name:str) -> str:
+            """
+            INNER FUNCTION: Inserts unseen rows into LSAT and updates rows still present. 
+            """
+            with engine.connect() as connection:
+                # Load in current SAT from Database
+                lsat_database = pd.read_sql_table(f"LSAT_{table_name}", con=connection, schema="dwh")
+
+                # Find last version of inserted rows of the SAT
+                lsat_database = (lsat_database[[f"{table_name}_BK", "record_hash", "load_dts"]]
+                            .sort_values([f"{table_name}_BK", "load_dts"], ascending=False)
+                            .groupby([f"{table_name}_BK"], as_index=False)
+                            .head(1)
+                            )
+                
+                # Find out if incoming data is already in LSAT
+                lsat = lsat.merge(
+                            lsat_database,
+                            how="left",
+                            on=[f"{table_name}_BK", "record_hash"],
+                            indicator=True,
+                            suffixes=["", "_Target"],
+                        )
+                
+                # Insert Rows not Seen in DataBase
+                lsat[lsat["_merge"] == "left_only"].drop(["_merge", "load_dts_Target"], axis=1).to_sql(
+                            f"LSAT_{table_name}",
+                            con=connection,
+                            schema="dwh",
+                            if_exists="append",
+                            index=False
+                        )
+                
+                # Updating LastSeenDTS for values seen
+                # Getting all Loading Dates for records already present
+                load_dts_lst = []
+                for item in (lsat[lsat["_merge"] == "both"]["load_dts_Target"].astype(str).unique().tolist()):
+                    load_dts_lst.append(item)
+                load_dts_tuple = tuple(load_dts_lst) + ("1900-01-01",)
+
+                # Getting all Business Key's for records already present
+                bk_lst = []
+                for key in lsat[lsat["_merge"] == "both"][f"{table_name}_BK"].unique().tolist():
+                    bk_lst.append(key)
+                bk_tuple = tuple(bk_lst)
+
+                # Update the Last_seen_dts
+                stmt = f"""
+                Update dwh."LSAT_{table_name}" 
+                SET "LastSeen_dts" = '{date.today()}'
+                WHERE "{table_name}_BK" in {bk_tuple}
+                AND "load_dts" in {load_dts_tuple}
+                        """
+                connection.execute(stmt)
+            #return f"Updated {len(bk_tuple)} rows" # Logging.
+            return 1
+
+    def create_lnk_database(lnk:pd.DataFrame, table_name:str,  foreign_keys:dict) -> str:
+            """
+            INNER FUNCTION: if LNK not exists creates lnk by inserting the LNK dataframe and altering table. 
+            """
+            # Set up Alter Statements
+            lnk_stmt = f"""ALTER TABLE dwh."LNK_{table_name}"
+                                ADD CONSTRAINT PK_LNK_{table_name} PRIMARY KEY ("{table_name}_BK");
+                                """
+            for table in foreign_keys.keys():
+                    stmt = f"""ALTER TABLE dwh."LNK_{table_name}"
+                    ADD CONSTRAINT FK_LNK_{table} FOREIGN KEY ("{table}_BK") 
+                    REFERENCES dwh."HUB_{table}" ("{table}_BK");  
+                    """
+                    lnk_stmt += stmt
+            with engine.connect() as connection:
+                print(f"{table_name}_BK")
+                lnk.drop_duplicates(subset=[f"{table_name}_BK"], keep="first").to_sql(
+                            f"LNK_{table_name}", 
+                            con=connection, 
+                            schema="dwh", 
+                            index=False
+                        )  # insert Hub
+                connection.execute(lnk_stmt)  # Alter LNK
+            return f"Created and Inserted LNK_{table_name}"
+
+    def create_lsat_database(lsat:pd.DataFrame, table_name) -> str:
+        """
+        INNER FUNCTION: if LSAT not exists creates LSAT by inserting the LSAT dataframe and altering table. 
+        Futhermore, creates views based on LSAT. 
+        Actuals -> All rows with max LastSeen_Dts
+        Current -> All latest rows inserted. 
+        """
+        # Create SAT Alter Statement
+        lsat_stmt = f"""ALTER TABLE dwh."LSAT_{table_name}"
+                        ADD CONSTRAINT PK_LSAT_{table_name} PRIMARY KEY ("{table_name}_BK", load_dts);
+                        ALTER TABLE dwh."LSAT_{table_name}"
+                        ADD CONSTRAINT FK_LSAT_{table_name} FOREIGN KEY ("{table_name}_BK")
+                        REFERENCES dwh."LNK_{table_name}" ("{table_name}_BK")                       
+                                    """
+        # Statement for creation of Views
+        vw_actual_stmt = f"""Create view dwh."vwLSAT_{table_name}_Actuals" as 
+                            select * from dwh."LSAT_{table_name}"
+                            where "LastSeen_dts" = 
+                                (
+                                    select max("LastSeen_dts") from dwh."LSAT_{table_name}"
+                                )                   
+                            """
+        vw_current_stmt = f""" 
+                            create view dwh."vwLSAT_{table_name}_Currents" as 
+                                SELECT *
+                                FROM (
+                                SELECT *
+                                ,ROW_NUMBER() OVER (
+                                PARTITION BY "{table_name}_BK" ORDER BY "load_dts" DESC
+                                                ) row_num
+                                        FROM dwh."vwLSAT_{table_name}_Actuals"
+                                        ) C
+                                    WHERE row_num = 1
+                                    
+                                    """
+        with engine.connect() as connection:
+                lsat.drop_duplicates(subset=["record_hash"]).to_sql(
+                                        f"LSAT_{table_name}", 
+                                        con=connection, 
+                                        schema="dwh", 
+                                        index=False
+                                    )  # insert Sat
+                connection.execute(lsat_stmt)  # Alter SAT
+
+                connection.execute(vw_actual_stmt)  # Create Actuals View
+                connection.execute(vw_current_stmt)  # Create Current stmt
+            #return f"Created and Inserted SAT_{table_name}"
+        return 1
+    #Logic
+    prepared_dataframe = prepare_dataframe(dataframe=dataframe, table_name=table_name, unique_column=unique_column) # prepare dataframe
+    # Create LNK and LSAT
+    lnk = create_lnk(dataframe=dataframe, table_name=table_name, unique_column=unique_column, foreign_keys=foreign_keys)
+    lsat = dataframe
+    # Check if Table exists
+    table_exists = check_if_table_exists(table_name=table_name,type= "LNK", connection_string=connection_string)
+    # Logic
+    if table_exists: # if exists then insert
+        insert_lnk(lnk, table_name)
+        insert_lsat(lsat=lsat, table_name=table_name)
+    else: # Not exits create 
+        create_lnk_database(lnk=lnk, table_name=table_name, foreign_keys=foreign_keys)
+        create_lsat_database(lsat=lsat, table_name=table_name)
+
+
