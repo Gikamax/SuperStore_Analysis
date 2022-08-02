@@ -8,8 +8,8 @@ from dotenv import load_dotenv
 import os
 
 # Variables for connecting to Source and Database
-load_dotenv()
-db_connection_string = os.getenv("POSTGRES_DB") 
+# load_dotenv()
+# db_connection_string = os.getenv("POSTGRES_DB") 
 
 # Functions
 def prepare_database(connection_string:str, schema_list:list) -> str:
@@ -269,7 +269,7 @@ def load_hub(dataframe:pd.DataFrame, table_name:str, unique_column:str, connecti
     sat = create_sat(prepared_dataframe, table_name=table_name)
 
     # Check if table exists
-    table_exists = check_if_table_exists(table_name=table_name)
+    table_exists = check_if_table_exists(table_name=table_name, connection_string=connection_string)
 
     if table_exists: # if the table exists then we want to insert. 
         insert_hub(hub, table_name)

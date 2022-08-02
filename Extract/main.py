@@ -34,13 +34,14 @@ df_order_information = (df_orders[["Order ID", "Order Date", "Order Priority"]]
                         .drop("Order ID_R", axis=1)) # create order information by joining two tables.
 df_order_information["Status"].fillna("Delivered", inplace=True) # if Status NaN then no return
 df_order_information.drop_duplicates(inplace=True) # Get Unique values. 
+df_order_information.drop_duplicates(subset=["Order ID"], keep="last", inplace=True) # Some Orders have partially been returned, keep last instance. 
 df_orders.drop(["Order ID", "Order Date", "Order Priority"], axis=1, inplace=True) # Drop Columns that are in this table. 
 
 # Customer
 df_customer = df_orders[["Customer ID", "Customer Name", "Customer Segment", "Country", "Region", "State or Province", "City", "Postal Code"]]
 df_customer.drop_duplicates(inplace=True)
 df_orders.drop(["Customer Name", "Customer Segment", "Country", "Region", "State or Province", "City", "Postal Code"], axis =1 , inplace=True)
-# Figure out how to deal with Customer ID not being unique. (Customers have multiple Postal Codes)
+df_customer.drop_duplicates(subset=["Customer ID"], keep="last", inplace=True) # Customers moved, Kept last instance of moving. 
 
 # Product
 df_product = df_orders[["Product Name", "Product Sub-Category", "Product Category", "Product Container", "Product Base Margin"]]
@@ -61,45 +62,18 @@ df_orders.drop(["Ship Mode", "Shipping Cost", "Ship Date"], axis =1 , inplace=Tr
 # Sales
 df_sales = df_orders.drop("Row ID", axis=1)
 
+## Read in Data
+# Prepare Database (Create Schema's if needed)
 etl.prepare_database(db_connection_string, ["dwh", "dm"]) # prepare database. 
 
-# Check if Customer ID in df_customer is unique // not unique some people moved
-df_x = df_customer.groupby(["Customer ID"]).agg({"Postal Code": "count"})
-print(df_x[df_x["Postal Code"] > 1])
+# Read in the Dimensions
+etl.load_hub(df_manager, "Manager", "Manager ID", db_connection_string) # Manager
+etl.load_hub(df_order_information, "Order", "Order ID", db_connection_string) # Order information
+etl.load_hub(df_customer, "Customer", "Customer ID", db_connection_string) # Customer
+etl.load_hub(df_product, "Product", "Product ID", db_connection_string) # Product
+etl.load_hub(df_shipping, "Shipment", "Shipping ID", db_connection_string) # Shipping
+
+# Read in the Fact(s)
+df_x = df_sales.head()
 
 
-## Test with Customer
-# df_x = df_customer.head(10)
-
-# etl.load_hub(df_x, "Customer", "Customer ID", db_connection_string)
-
-
-# # Prepare dataframe
-# df_x = etl.prepare_dataframe(df_x, "Product", "Product ID")
-# #SET SAT and HUB
-# hub_x = etl.create_hub(df_x, "Product", "Product ID")
-# sat_x = etl.create_sat(df_x, "Product")
-# # Check if Table exists
-# table_exists = etl.check_if_table_exists("Product")
-
-# if table_exists:
-#     etl.insert_hub(hub_x, "Product")
-#     etl.insert_sat(sat_x, "Product")
-# else:
-#     etl.create_hub_database(hub_x, "Product")
-#     etl.create_sat_database(sat_x, "Product")
-# print("Succes")
-
-
-
-
-# print(df)
-
-# engine = db.create_engine(db_connection_string)
-
-# connection = engine.connect()
-# metadata = db.MetaData()
-
-# result = connection.execute("select * from information_schema.tables").fetchall()
-
-# print(result)
