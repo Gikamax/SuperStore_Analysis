@@ -77,7 +77,8 @@ select
   percentage_per_product_id."Percentage of Category"
 from
   base_table
-  INNER JOIN percentage_per_product_id on percentage_per_product_id."Product ID" = base_table."Product ID"
+  LEFT JOIN percentage_per_product_id on percentage_per_product_id."Product ID" = base_table."Product ID"
+  WHERE percentage_per_product_id."Percentage of Category" IS NOT NULL
 ORDER BY
   "Total Sales per Category" desc,
   "Percentage of Category" desc
