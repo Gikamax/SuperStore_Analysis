@@ -151,7 +151,7 @@ def setup_Analysis_Schema(connection_string:str, source_schema:str, target_schem
                 if column not in ['load_dts', 'LastSeen_dts', 'row_num', 'record_source', 'record_hash'] and column[-2:] != "BK": 
                     columns_to_select.append(column)
 
-            df[columns_to_select].to_sql(dm_table_name,connection, target_schema, "replace") # Write to DM and replace if already present. 
+            df[columns_to_select].to_sql(dm_table_name,connection, target_schema, "replace", index=False) # Write to DM and replace if already present. 
     # Logic
     for _view in get_source_views(source_schema):
         create_table_target(_view, source_schema, target_schema)

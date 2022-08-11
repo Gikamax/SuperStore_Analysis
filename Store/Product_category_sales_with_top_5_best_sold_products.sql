@@ -7,8 +7,8 @@ with
       Product."Product Name",
       SUM(Sales."Sales") AS Sales
     FROM
-      dwh."vwLSAT_Sales_Currents" as Sales
-      LEFT JOIN dwh."vwSAT_Product_Currents" as Product on Sales."Product ID" = Product."Product ID"
+      dm."Sales" as Sales
+      LEFT JOIN dm."Product" as Product on Sales."Product ID" = Product."Product ID"
     GROUP BY
       Product."Product Category",
       Product."Product ID",

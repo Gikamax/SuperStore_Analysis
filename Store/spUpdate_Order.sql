@@ -1,18 +1,18 @@
 -- Stored procedure to Update dwh.SAT_Order with processing time and expected_processing time 
-CREATE OR REPLACE PROCEDURE dwh.spUpdate_Order () LANGUAGE plpgsql AS $$
+CREATE OR REPLACE PROCEDURE dm.spUpdate_Order () LANGUAGE plpgsql AS $$
 
 DECLARE 
 cur_orders CURSOR
 FOR
 SELECT DISTINCT _Order."Order ID"
 	,MAX(DATE_PART('day', Ship."Ship Date" - _Order."Order Date")) AS "Processing Time"
-FROM dwh."SAT_Order" AS _Order
+FROM dm."Order" AS _Order
 LEFT JOIN (
 	SELECT "Order ID"
 		,"Shipping ID"
-	FROM dwh."LSAT_Sales"
+	FROM dm."Sales"
 	) AS Sales ON _Order."Order ID" = Sales."Order ID"
-LEFT JOIN dwh."SAT_Shipment" AS Ship ON Ship."Shipping ID" = Sales."Shipping ID"
+LEFT JOIN dm."Shipment" AS Ship ON Ship."Shipping ID" = Sales."Shipping ID"
 GROUP BY _Order."Order ID";
 row_orders record;
 
@@ -29,16 +29,16 @@ FROM (
 	SELECT "Customer ID"
 		,"Order ID"
 		,"Shipping ID"
-	FROM dwh."LSAT_Sales"
+	FROM dm."Sales"
 	) AS Sales
-LEFT JOIN dwh."SAT_Customer" AS Customer ON Sales."Customer ID" = Customer."Customer ID"
-LEFT JOIN dwh."SAT_Order" AS _Order ON Sales."Order ID" = _Order."Order ID"
-LEFT JOIN dwh."SAT_Shipment" AS Ship ON Sales."Shipping ID" = Ship."Shipping ID";
+LEFT JOIN dm."Customer" AS Customer ON Sales."Customer ID" = Customer."Customer ID"
+LEFT JOIN dm."Order" AS _Order ON Sales."Order ID" = _Order."Order ID"
+LEFT JOIN dm."Shipment" AS Ship ON Sales."Shipping ID" = Ship."Shipping ID";
 row_expected_time record;
 
 BEGIN
 	-- Add columns to Sat_Order if not exists. 
-	ALTER TABLE dwh."SAT_Order" 
+	ALTER TABLE dm."Order" 
 	ADD COLUMN IF NOT EXISTS "Processing Time" INTEGER
 	,ADD COLUMN IF NOT EXISTS "Expected Processing Time" INTEGER;
 	
@@ -51,7 +51,7 @@ BEGIN
 
 	EXIT when NOT found;
 
-	UPDATE dwh."SAT_Order"
+	UPDATE dm."Order"
 	SET "Processing Time" = row_orders."Processing Time"
 	WHERE "Order ID" = row_orders."Order ID";
 	END LOOP;
@@ -65,7 +65,7 @@ CLOSE cur_orders;
 	
 	EXIT when NOT FOUND;
 	
-	UPDATE dwh."SAT_Order"
+	UPDATE dm."Order"
 	SET "Expected Processing Time" = row_expected_time."X"
 	WHERE "Order ID" = row_expected_time."Order ID";
 	END LOOP;

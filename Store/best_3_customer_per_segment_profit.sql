@@ -10,9 +10,9 @@ with
       SUM(Sales."Sales") AS Sales,
       SUM(Sales."Profit") AS Profit
     from
-      dwh."LSAT_Sales" AS Sales -- CHANGE TO VIEW
-      LEFT JOIN dwh."SAT_Customer" as Customer on Customer."Customer ID" = Sales."Customer ID" -- CHANGE TO VIEW
-      LEFT JOIN dwh."SAT_Order" as _Order on _Order."Order ID" = Sales."Order ID" -- CHANGE TO VIEW
+      dm."Sales" AS Sales 
+      LEFT JOIN dm."Customer" as Customer on Customer."Customer ID" = Sales."Customer ID" -- CHANGE TO VIEW
+      LEFT JOIN dm."Order" as _Order on _Order."Order ID" = Sales."Order ID" -- CHANGE TO VIEW
     GROUP BY
       Customer."Customer ID",
       Customer."Customer Name",
