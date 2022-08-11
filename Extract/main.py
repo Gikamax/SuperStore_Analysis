@@ -78,3 +78,6 @@ etl.load_hub(df_shipping, "Shipment", "Shipping ID", db_connection_string) # Shi
 # Read in the Fact(s)
 fkey_dict = {"Manager": "Manager ID", "Order": "Order ID", "Customer": "Customer ID", "Product": "Product ID", "Shipment": "Shipping ID"}
 etl.load_lnk(df_sales,"Sales", "Sales ID", fkey_dict, db_connection_string)
+
+# Create or Refresh analysis Schema
+etl.setup_Analysis_Schema(connection_string=db_connection_string, source_schema="dwh", target_schema="dm")

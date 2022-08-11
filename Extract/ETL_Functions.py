@@ -100,6 +100,62 @@ def check_if_table_exists(table_name:str, type:str, connection_string:str) -> Bo
             return True
     return False
 
+def setup_Analysis_Schema(connection_string:str, source_schema:str, target_schema:str):
+    """
+    Creates Analysis Schema.
+    Removes all columns needed for DATAVAULT2.0.
+    """
+    # create Engine
+    engine = db.create_engine(connection_string)
+    # Find all relevant Views in DWH
+    def get_source_views(schema_name:str) -> list:
+        """
+        INNER FUNCTION: retrieves all the views needed for converting to DM in a list. 
+        """
+        result_list = [] # Empty list for result
+        with engine.connect() as connection:
+            metadata = db.MetaData()  # placeholder for Metadata
+            # Retrive tables (information_schema.tables)
+            tables = db.Table(
+                    "tables",
+                        metadata,
+                        autoload=True,
+                        autoload_with=engine,
+                        schema="information_schema",
+                    )
+            # Create Query
+            query = db.select([tables.columns.table_name]) # Select only Table_name
+            query = query.where(
+                db.and_(
+                    tables.columns.table_name.like("%_Currents"), # the Views with Currents, so *_Currents
+                    tables.columns.table_type == "VIEW", # Type is View
+                    tables.columns.table_schema == schema_name.lower() # for Schema DWH. 
+                )
+            )
+            views_list = connection.execute(query).fetchall() # Execute query 
+            for view in views_list: # Loop over the result
+                result_list.append(view[0]) # Grab the first cause result = (table, )
+        return result_list
+    # Read in table and drop unnecessary columns
+    def create_table_target(name_view:str, source_schema:str, target_schema:str):
+        """
+        INNER FUNCTION: Creates Schema with tables ready for analysis. 
+        """
+        columns_to_select = []
+        dm_table_name = name_view.split('_')[1]
+        with engine.connect() as connection:
+            df = pd.read_sql(f'select * from {source_schema}."{name_view}"', connection) # Read in View
+
+            for column in df.columns: # Iterate over all columns
+                # Only Select Columns that are needed. 
+                if column not in ['load_dts', 'LastSeen_dts', 'row_num', 'record_source', 'record_hash'] and column[-2:] != "BK": 
+                    columns_to_select.append(column)
+
+            df[columns_to_select].to_sql(dm_table_name,connection, target_schema, "replace") # Write to DM and replace if already present. 
+    # Logic
+    for _view in get_source_views(source_schema):
+        create_table_target(_view, source_schema, target_schema)
+
 def load_hub(dataframe:pd.DataFrame, table_name:str, unique_column:str, connection_string:str):
     """
     Function to Load the HUB and SAT combination. 
@@ -476,5 +532,3 @@ def load_lnk(dataframe:pd.DataFrame, table_name:str, unique_column:str, foreign_
     else: # Not exits create 
         create_lnk_database(lnk=lnk, table_name=table_name, foreign_keys=foreign_keys)
         create_lsat_database(lsat=lsat, table_name=table_name)
-
-
