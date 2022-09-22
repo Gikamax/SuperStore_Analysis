@@ -1,4 +1,5 @@
 -- Query to get Total Sales per Category and Top 5 best Sold products in Percentage of Category per Year
+CREATE VIEW dm."Total_Sales_per_Category_and_Top_5_best_Sold" as 
 with
   base_table as (
     SELECT

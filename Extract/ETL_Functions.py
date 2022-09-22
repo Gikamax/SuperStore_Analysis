@@ -156,6 +156,7 @@ def setup_Analysis_Schema(connection_string:str, source_schema:str, target_schem
     for _view in get_source_views(source_schema):
         create_table_target(_view, source_schema, target_schema)
 
+
 def load_hub(dataframe:pd.DataFrame, table_name:str, unique_column:str, connection_string:str):
     """
     Function to Load the HUB and SAT combination. 
@@ -532,3 +533,23 @@ def load_lnk(dataframe:pd.DataFrame, table_name:str, unique_column:str, foreign_
     else: # Not exits create 
         create_lnk_database(lnk=lnk, table_name=table_name, foreign_keys=foreign_keys)
         create_lsat_database(lsat=lsat, table_name=table_name)
+
+def setup_SQL_files(connection_string: str, path_to_folder:str) -> None:
+    """
+    Converts Local SQL Files (Views/Stored Procedures) to the Database.
+    """
+    # Create engine
+    engine = db.create_engine(connection_string).execution_options(autocommit=True) # Autocommit is important for creating the views. 
+    # Iterate over all the views
+    for file in os.listdir(path_to_folder):
+        # Create Path to file
+        sql_file = path_to_folder + "/" + file
+        # Open file 
+        with open(sql_file, "r") as f:
+            # Set Content to SQL Command
+            sql_command = f.read()
+        # Connect to database
+        with engine.connect() as connection:
+            # Execute Views Query
+            connection.execute(sql_command)
+

@@ -81,3 +81,7 @@ etl.load_lnk(df_sales,"Sales", "Sales ID", fkey_dict, db_connection_string)
 
 # Create or Refresh analysis Schema
 etl.setup_Analysis_Schema(connection_string=db_connection_string, source_schema="dwh", target_schema="dm")
+# Setup all Views
+etl.setup_SQL_files(connection_string=db_connection_string, path_to_folder="/home/gikamax/Repo/SuperStore_Analysis/Store/Views")
+# Setup all Stored Procedures
+etl.setup_SQL_files(connection_string=db_connection_string, path_to_folder="/home/gikamax/Repo/SuperStore_Analysis/Store/Functions")

@@ -1,4 +1,5 @@
 -- Get best 3 customer per segment in terms of profit per month
+CREATE VIEW	dm."Top_3_Customer_per_Segment" as 
 with
   base_table as (
     select
