@@ -1,9 +1,9 @@
-from pydoc import classname
 from dash import Dash, html
+import pandas as pd
 
-from . import dropdown, bar_chart
+from . import category_dropdown, bar_chart, month_dropdown
 
-def create_layout(app:Dash) -> html.Div:
+def create_layout(app:Dash, data:pd.DataFrame) -> html.Div:
     return html.Div(
         className= "app-div",
         children=[
@@ -12,9 +12,10 @@ def create_layout(app:Dash) -> html.Div:
             html.Div(
                 className="dropdown-container",
                 children=[
-                    dropdown.render(app)
+                    category_dropdown.render(app, data),
+                    month_dropdown.render(app, data)
                 ]
             ),
-            bar_chart.render(app)
+            bar_chart.render(app, data)
         ]
     )
