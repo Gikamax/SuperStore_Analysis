@@ -1,5 +1,8 @@
 CATEGORY_DROPDOWN = "category-dropdown"
 MONTH_DROPDOWN = "month-dropdown"
+SEGMENT_DROPDOWN = "segment-dropdown"
 SELECT_ALL_MONTHS_BUTTON = "select-all-months-button"
 SELECT_ALL_CATEGORIES_BUTTON = "select-all-categories-button"
+SELECT_ALL_SEGMENTS_BUTTON = "select-all-segments-button"
 BAR_CHART = "bar-chart"
+LINE_CHART = "line-chart"

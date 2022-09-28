@@ -3,7 +3,7 @@ from dash.dependencies import Input, Output
 from src.data.source import DataSource
 
 from src.data.loader import Dataschema
-from . import ids
+from . import ids, colorTheme
 import pandas as pd 
 
 def render(app:Dash, source: DataSource) -> html.Div:
@@ -17,7 +17,7 @@ def render(app:Dash, source: DataSource) -> html.Div:
 
     return html.Div(
         children=[
-            html.H6("Category"),
+            html.H6("Category", style={'color': colorTheme.TEXT_COLOR}),
             dcc.Dropdown(
                 id = ids.CATEGORY_DROPDOWN,
                 options= [{"label": category, "value": category} for category in source.unique_categories],

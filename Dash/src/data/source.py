@@ -22,20 +22,36 @@ class DataSource:
         return self._data[Dataschema.CATEGORY].tolist()
     
     @property
+    def all_segments(self) -> list[str]:
+        return self._data[Dataschema.CUSTOMER_SEGMENT].tolist()
+    
+    @property
     def unique_months(self) -> list[str]:
         return sorted(set(self.all_months))
     
     @property
     def unique_categories(self) -> list[str]:
         return sorted(set(self.all_categories))
+
+    @property
+    def unique_segments(self) -> list[str]:
+        return sorted(set(self.all_segments))
     
-    def filter(self, categories: Optional[list[str]] = None, months: Optional[list[str]] = None) -> DataSource:
+    def filter(self, categories: Optional[list[str]] = None, months: Optional[list[str]] = None, segments: Optional[list[str]] = None) -> DataSource:
         if categories is None:
             categories = self.unique_categories
         if months is None:
             months = self.unique_months
-        filtered_data = self._data[self._data[Dataschema.ORDER_MONTH].isin(months) & self._data[Dataschema.CATEGORY].isin(categories)]
+        if segments is None:
+            segments = self.unique_segments
+        filtered_data = self._data[
+            self._data[Dataschema.ORDER_MONTH].isin(months) & 
+            self._data[Dataschema.CATEGORY].isin(categories) & 
+            self._data[Dataschema.CUSTOMER_SEGMENT].isin(segments)]
         return DataSource(filtered_data)
     
     def prepare_data_for_barchart(self) -> pd.DataFrame:
         return self._data.groupby([Dataschema.ORDER_MONTH, Dataschema.CATEGORY]).agg({Dataschema.SALES: "sum"}).reset_index()
+    
+    def prepare_data_for_linechart(self) -> pd.DataFrame:
+        return self._data.groupby(Dataschema.ORDER_DATE).agg({Dataschema.SALES: "sum", Dataschema.PROFIT: "sum"}).reset_index()
