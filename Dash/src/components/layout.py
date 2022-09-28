@@ -1,9 +1,11 @@
 from dash import Dash, html
 import pandas as pd
 
+from src.data.source import DataSource
+
 from . import category_dropdown, bar_chart, month_dropdown
 
-def create_layout(app:Dash, data:pd.DataFrame) -> html.Div:
+def create_layout(app:Dash, source:DataSource) -> html.Div:
     return html.Div(
         className= "app-div",
         children=[
@@ -12,10 +14,10 @@ def create_layout(app:Dash, data:pd.DataFrame) -> html.Div:
             html.Div(
                 className="dropdown-container",
                 children=[
-                    category_dropdown.render(app, data),
-                    month_dropdown.render(app, data)
+                    category_dropdown.render(app, source),
+                    month_dropdown.render(app, source)
                 ]
             ),
-            bar_chart.render(app, data)
+            bar_chart.render(app, source)
         ]
     )

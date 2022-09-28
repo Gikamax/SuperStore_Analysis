@@ -1,27 +1,27 @@
 from dash import Dash, html, dcc
 from dash.dependencies import Input, Output
+from src.data.source import DataSource
 
 from src.data.loader import Dataschema
 from . import ids
 import pandas as pd 
 
-def render(app:Dash, data: pd.DataFrame) -> html.Div:
+def render(app:Dash, source: DataSource) -> html.Div:
     #all_categories = ["Technology", "Office Supplies", "Furniture"]
-    all_categories = data[Dataschema.CATEGORY].unique().tolist()
     @app.callback(
         Output(ids.CATEGORY_DROPDOWN, "value"),
         Input(ids.SELECT_ALL_CATEGORIES_BUTTON, "n_clicks")
     )
     def select_all_categories(_:int) -> list[str]:
-        return all_categories
+        return source.unique_categories
 
     return html.Div(
         children=[
             html.H6("Category"),
             dcc.Dropdown(
                 id = ids.CATEGORY_DROPDOWN,
-                options= [{"label": category, "value": category} for category in all_categories],
-                value=all_categories,
+                options= [{"label": category, "value": category} for category in source.unique_categories],
+                value=source.unique_categories,
                 multi=True
             ),
             html.Button(
