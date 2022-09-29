@@ -50,8 +50,11 @@ class DataSource:
             self._data[Dataschema.CUSTOMER_SEGMENT].isin(segments)]
         return DataSource(filtered_data)
     
-    def prepare_data_for_barchart(self) -> pd.DataFrame:
-        return self._data.groupby([Dataschema.ORDER_MONTH, Dataschema.CATEGORY]).agg({Dataschema.SALES: "sum"}).reset_index()
+    def prepare_data_for_category_barchart(self) -> pd.DataFrame:
+        return self._data.groupby([Dataschema.CATEGORY, Dataschema.ORDER_MONTH]).agg({Dataschema.SALES: "sum"}).reset_index()
+    
+    def prepare_data_for_segment_barchart(self) -> pd.DataFrame:
+        return self._data.groupby([Dataschema.CUSTOMER_SEGMENT, Dataschema.ORDER_MONTH]).agg({Dataschema.SALES: "sum"}).reset_index()
     
     def prepare_data_for_linechart(self) -> pd.DataFrame:
         return self._data.groupby(Dataschema.ORDER_DATE).agg({Dataschema.SALES: "sum", Dataschema.PROFIT: "sum"}).reset_index()

@@ -1,21 +1,17 @@
 from dash import Dash, dcc, html
 from dash.dependencies import Input, Output
 import plotly.express as px
-import pandas as pd
-import sqlalchemy as db
 from src.data.source import DataSource
-
 from src.data.loader import Dataschema
 from . import ids, colorTheme
 
 def render(app:Dash, source: DataSource) -> html.Div:
     @app.callback(
         Output(ids.LINE_CHART, "children"),
-        [Input(ids.CATEGORY_DROPDOWN, "value"), Input(ids.SEGMENT_DROPDOWN, "value")]
+        [Input(ids.CATEGORY_DROPDOWN, "value"), Input(ids.SEGMENT_DROPDOWN, "value"), Input(ids.MONTH_DROPDOWN, "value")]
     )
-    def update_line_chart(categories: list[str], segments: list[str]) -> html.Div:
-        filtered_source = source.filter(categories=categories, segments=segments)
-        #data.query("`Product Category` in @categories and Month in @months")
+    def update_line_chart(categories: list[str], segments: list[str], months: list[str]) -> html.Div:
+        filtered_source = source.filter(categories=categories, segments=segments, months=months)
 
         if not filtered_source.row_count:
             return html.Div("No data selected.")

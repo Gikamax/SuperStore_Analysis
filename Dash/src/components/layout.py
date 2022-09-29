@@ -4,7 +4,7 @@ import dash_bootstrap_components as dbc
 
 from src.data.source import DataSource
 
-from . import category_dropdown, bar_chart, month_dropdown, line_chart, segment_dropdown, colorTheme
+from . import category_dropdown, month_dropdown, line_chart, segment_dropdown, colorTheme, category_bar_chart, segment_bar_chart
 
 def create_layout(app:Dash, source:DataSource) -> html.Div:
     return html.Div(
@@ -16,6 +16,11 @@ def create_layout(app:Dash, source:DataSource) -> html.Div:
             html.Div(
                 children = [dbc.Row(
                 [
+                dbc.Col(children = [
+                        html.H5("Sales and Profit by Order Date", style={'textAlign': 'center', 'color': colorTheme.TEXT_COLOR})
+                        ,line_chart.render(app, source)
+                        ]
+                        , md=8),
                     dbc.Col(
                         dbc.Card(
                             [
@@ -23,34 +28,44 @@ def create_layout(app:Dash, source:DataSource) -> html.Div:
                                 html.Hr(),
                                 category_dropdown.render(app, source),
                                 html.Hr(),
-                                segment_dropdown.render(app, source)
+                                segment_dropdown.render(app, source), 
+                                html.Hr(),
+                                month_dropdown.render(app, source)
                             ],
                             body=True,
                             style= {'backgroundColor': colorTheme.CARD_BACKGROUND_COLOR}
                             ),
                             md=4
-                    ),
-                    dbc.Col(children = [
-                        html.H5("Sales and Profit by Order Date", style={'textAlign': 'center', 'color': colorTheme.TEXT_COLOR})
-                        ,line_chart.render(app, source)
-                        ]
-                        , md=8)
+                    )
                 ],
                 align= "center"
             )
             ]
+            ),
+            html.Hr(),
+            html.Div(
+                children=[
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                children = [
+                                html.H5("Sales per Category", style={'textAlign': 'center', 'color': colorTheme.TEXT_COLOR}),
+                                category_bar_chart.render(app, source)
+                                ],
+                                md= 6,
+                                align= "center"
+                            ),
+                            dbc.Col(
+                                children = [
+                                html.H5("Sales per Segment", style={'textAlign': 'center', 'color': colorTheme.TEXT_COLOR}),
+                                segment_bar_chart.render(app, source)
+                                ],
+                                md= 6,
+                                align= "center"
+                            )
+                        ]
+                    )
+                ]
             )
-        #     html.Div(
-        #         style = {'backgroundColor': colorTheme.BACKGROUND_COLOR},
-        #         className="dropdown-container",
-        #         children=[
-        #             category_dropdown.render(app, source),
-        #             segment_dropdown.render(app, source)
-        #         ]
-        #     ),
-        #     html.H3("Sales and Profit by Order Date",
-        #         style = {'textAlign': 'center', 'color': colorTheme.TEXT_COLOR}
-        #     ),
-        #     line_chart.render(app, source)
         ]
     )
