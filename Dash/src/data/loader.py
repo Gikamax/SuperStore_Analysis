@@ -1,12 +1,12 @@
-from json import load
+import pathlib
 import pandas as pd
 import sqlalchemy as db
-import pathlib
 
-## Modify Loader to ensure all data is being loaded
-## Summarize Data in each Chart. 
 
 class Dataschema:
+    """
+    Class to Store all Column Names for easy reference throughout the project.
+    """
     ORDER_DATE = "Order Date"
     ORDER_MONTH = "Order Month"
     ORDER_PRIORITY = "Order Priority"
@@ -32,14 +32,16 @@ class Dataschema:
     PROFIT = "Profit"
 
 
-
-def load_data(connection_string:str) -> pd.DataFrame:
+def load_data(connection_string: str) -> pd.DataFrame:
+    """
+    Reads Data from SQL Database, with predefined SQL Query. 
+    """
     engine = db.create_engine(connection_string)
     # Read in SQL Query
     with open(pathlib.Path(__file__).parent / "query.sql") as f:
         sql_query = f.read()
 
-    # Read in Dataframe 
+    # Read in Dataframe
     with engine.connect() as connection:
         df = pd.read_sql_query(sql=sql_query, con=connection)
     # Add column Order Month
